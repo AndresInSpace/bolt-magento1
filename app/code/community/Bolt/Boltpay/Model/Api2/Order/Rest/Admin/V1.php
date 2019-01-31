@@ -59,6 +59,7 @@ class Bolt_Boltpay_Model_Api2_Order_Rest_Admin_V1 extends Bolt_Boltpay_Model_Api
             $this->getResponse()->clearHeader("Location");
         } catch (Exception $e) {
             Mage::helper('boltpay/bugsnag')->notifyException($e);
+            Mage::helper('boltpay/dataDog')->logError($e);
             throw $e;
         }
 
@@ -166,7 +167,7 @@ class Bolt_Boltpay_Model_Api2_Order_Rest_Admin_V1 extends Bolt_Boltpay_Model_Api
             //Mage::log($error, null, 'bolt.log');
             //Mage::log("Late queue event. Returning as OK", null, 'bolt.log');
 
-
+            Mage::helper('boltpay/dataDog')->logError($invalid);
             Mage::helper('boltpay/bugsnag')->addBreadcrumb(
                 array(
                     "API HOOKS late queue event" => array (
@@ -181,7 +182,7 @@ class Bolt_Boltpay_Model_Api2_Order_Rest_Admin_V1 extends Bolt_Boltpay_Model_Api
         } catch (Exception $e) {
             $error = $e->getMessage();
             //Mage::log($error, null, 'bolt.log');
-
+            Mage::helper('boltpay/dataDog')->logError($e);
             Mage::helper('boltpay/bugsnag')->addBreadcrumb(
                 array(
                     "API HOOKS Exception" => array (

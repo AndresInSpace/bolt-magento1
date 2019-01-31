@@ -48,6 +48,7 @@ class Bolt_Boltpay_Model_Observer
             }
         } catch (Exception $e) {
             Mage::helper('boltpay/bugsnag')->notifyException($e);
+            Mage::helper('boltpay/dataDog')->logError($e);
         }
 
         $session->unsBoltUserId();
@@ -110,7 +111,8 @@ class Bolt_Boltpay_Model_Observer
                     'display_id' => $order->getIncrementId(),
                 );
                 Mage::helper('boltpay/bugsnag')->notifyException(new Exception($message), $metaData);
-            }
+                Mage::helper('boltpay/dataDog')->logWarning($message);
+           }
             $this->sendOrderEmail($order);
             $order->save();
         }
@@ -144,6 +146,7 @@ class Bolt_Boltpay_Model_Observer
 
             $error = new Exception('Failed to send order email', 0, $e);
             Mage::helper('boltpay/bugsnag')->notifyException($error);
+            Mage::helper('boltpay/dataDog')->logWarning($error);
             return;
         }
 
@@ -269,6 +272,7 @@ class Bolt_Boltpay_Model_Observer
         if(Mage::getSingleton('core/session')->getWasCreatedByHook()){ // order is create via AJAX call
             $msg .= Mage::helper('boltpay')->__("  This order was created via webhook (Bolt traceId: <%s>)", Mage::helper('boltpay/bugsnag')->getBoltTraceId());
         }
+        Mage::helper('boltpay/dataDog')->logInfo($msg);
 
         $order->setState(Bolt_Boltpay_Model_Payment::transactionStatusToOrderStatus($transaction->status), true, $msg)
             ->save();

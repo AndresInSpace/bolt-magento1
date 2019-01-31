@@ -71,6 +71,7 @@ class Bolt_Boltpay_OrderController extends Mage_Core_Controller_Front_Action
 
         } catch (Exception $e) {
             Mage::helper('boltpay/bugsnag')->notifyException($e);
+            Mage::helper('boltpay/dataDog')->logError($e);
             throw $e;
         }
     }
@@ -168,6 +169,7 @@ class Bolt_Boltpay_OrderController extends Mage_Core_Controller_Front_Action
             $this->getResponse()->setBody(Mage::helper('core')->jsonEncode($result));
         } catch (Exception $e) {
             Mage::helper('boltpay/bugsnag')->notifyException($e);
+            Mage::helper('boltpay/dataDog')->logError($e);
             throw $e;
         }
     }

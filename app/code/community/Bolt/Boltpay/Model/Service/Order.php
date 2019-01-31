@@ -40,6 +40,7 @@ class Bolt_Boltpay_Model_Service_Order extends Mage_Sales_Model_Service_Order
             );
 
             Mage::helper('boltpay/bugsnag')->notifyException($e, $metaData);
+            Mage::helper('boltpay/dataDog')->logError($e, $metaData);
             throw $e;
         }
 

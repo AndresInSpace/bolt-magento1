@@ -47,13 +47,16 @@ class Bolt_Boltpay_OnepageController extends Mage_Checkout_OnepageController
 
                             $result['error'] = $e->getMessage();
                             Mage::helper('boltpay/bugsnag')->notifyException($e);
+                            Mage::helper('boltpay/dataDog')->logError($e);
                         } catch (Mage_Core_Exception $e) {
                             $result['error'] = $e->getMessage();
                             Mage::helper('boltpay/bugsnag')->notifyException($e);
+                            Mage::helper('boltpay/dataDog')->logError($e);
                         } catch (Exception $e) {
                             //Mage::logException($e);
                             $result['error'] = $this->__('Unable to set Payment Method.');
                             Mage::helper('boltpay/bugsnag')->notifyException($e);
+                            Mage::helper('boltpay/dataDog')->logError($e);
                         }
                     }
 
@@ -86,6 +89,7 @@ class Bolt_Boltpay_OnepageController extends Mage_Checkout_OnepageController
             }
         } catch (Exception $e) {
             Mage::helper('boltpay/bugsnag')->notifyException($e);
+            Mage::helper('boltpay/dataDog')->logError($e);
             throw $e;
         }
     }

@@ -96,6 +96,7 @@ class Bolt_Boltpay_Helper_Api extends Bolt_Boltpay_Helper_Data
             return $response == 200;
         } catch (Exception $e) {
             Mage::helper('boltpay/bugsnag')->notifyException($e);
+            Mage::helper('boltpay/dataDog')->logError($e);
             return false;
         }
 
@@ -174,7 +175,7 @@ class Bolt_Boltpay_Helper_Api extends Bolt_Boltpay_Helper_Data
             curl_close($ch);
 
             $message ="Curl info: " . $curlInfo;
-
+            Mage::helper('boltpay/dataDog')->logWarning($message);
             Mage::throwException($message);
         }
 
@@ -186,6 +187,7 @@ class Bolt_Boltpay_Helper_Api extends Bolt_Boltpay_Helper_Data
         if ($jsonError != null) {
             curl_close($ch);
             $message ="JSON Parse Type: " . $jsonError . " Response: " . $result;
+            Mage::helper('boltpay/dataDog')->logWarning($message);
             Mage::throwException($message);
         }
 
@@ -250,6 +252,7 @@ class Bolt_Boltpay_Helper_Api extends Bolt_Boltpay_Helper_Data
     {
         if (is_null($response)) {
             $message = Mage::helper('boltpay')->__("BoltPay Gateway error: No response from Bolt. Please re-try again");
+            Mage::helper('boltpay/dataDog')->logWarning($message);
             Mage::throwException($message);
         } elseif (self::isResponseError($response)) {
             if (property_exists($response, 'errors')) {
@@ -260,6 +263,7 @@ class Bolt_Boltpay_Helper_Api extends Bolt_Boltpay_Helper_Data
             $message = Mage::helper('boltpay')->__("BoltPay Gateway error for %s: Request: %s, Response: %s", $url, $request, json_encode($response, true));
 
             Mage::helper('boltpay/bugsnag')->notifyException(new Exception($message));
+            Mage::helper('boltpay/dataDog')->logWarning($message);
             Mage::throwException($message);
         }
 

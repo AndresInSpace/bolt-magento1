@@ -40,7 +40,9 @@ class Bolt_Boltpay_Model_ShippingAndTax extends Mage_Core_Model_Abstract
         $regionId = $directory->getRegionId(); // This is require field for calculation: shipping, shopping price rules and etc.
 
         if (!property_exists($shippingAddress, 'postal_code') || !property_exists($shippingAddress, 'country_code')) {
-            throw new Exception(Mage::helper('boltpay')->__("Address must contain postal_code and country_code."));
+            $msg = Mage::helper('boltpay')->__("Address must contain postal_code and country_code.");
+            Mage::helper('boltpay/dataDog')->logWarning($msg);
+            throw new Exception($msg);
         }
 
         $shippingStreet = trim(
@@ -152,12 +154,9 @@ class Bolt_Boltpay_Model_ShippingAndTax extends Mage_Core_Model_Abstract
 
             if ($rate->getErrorMessage()) {
                 $metaData = array('quote' => var_export($quote->debug(), true));
-                Mage::helper('boltpay/bugsnag')->notifyException(
-                    new Exception(
-                        Mage::helper('boltpay')->__("Error getting shipping option for %s: %s", $rate->getCarrierTitle(), $rate->getErrorMessage())
-                    ),
-                    $metaData
-                );
+                $msg =    Mage::helper('boltpay')->__("Error getting shipping option for %s: %s", $rate->getCarrierTitle(), $rate->getErrorMessage());
+                Mage::helper('boltpay/dataDog')->logWarning($msg,$metaData);
+                Mage::helper('boltpay/bugsnag')->notifyException($msg, $metaData);
                 continue;
             }
 
@@ -167,11 +166,9 @@ class Bolt_Boltpay_Model_ShippingAndTax extends Mage_Core_Model_Abstract
 
             if (empty($rateCode)) {
                 $metaData = array('quote' => var_export($quote->debug(), true));
-
-                Mage::helper('boltpay/bugsnag')->notifyException(
-                    new Exception( Mage::helper('boltpay')->__('Rate code is empty. ') . var_export($rate->debug(), true) ),
-                    $metaData
-                );
+                $msg = Mage::helper('boltpay')->__('Rate code is empty. ') . var_export($rate->debug(), true);
+                Mage::helper('boltpay/dataDog')->logWarning($msg,$metaData);
+                Mage::helper('boltpay/bugsnag')->notifyException(new Exception($msg), $metaData);
             }
 
             $adjustedShippingAmount = $this->getAdjustedShippingAmount($originalDiscountedSubtotal, $quote);

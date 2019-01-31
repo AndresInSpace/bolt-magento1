@@ -42,16 +42,16 @@ class Bolt_Boltpay_ApiController extends Mage_Core_Controller_Front_Action
             Mage::helper('boltpay/api')->setResponseContextHeaders();
 
             if (!$boltHelper->verify_hook($requestJson, $hmacHeader)) {
-                $exception = new Exception($boltHelperBase->__('Hook request failed validation.'));
+                $msg = $boltHelperBase->__('Hook request failed validation.');
                 $this->getResponse()->setHttpResponseCode(412);
-                $this->getResponse()->setBody(json_encode(array('status' => 'failure', 'error' => array('code' => 6001, 'message' => $exception->getMessage()))));
+                $this->getResponse()->setBody(json_encode(array('status' => 'failure', 'error' => array('code' => 6001, 'message' => $msg))));
 
+                $exception = new Exception($msg);
                 $this->getResponse()->setException($exception);
                 Mage::helper('boltpay/bugsnag')->notifyException($exception);
+                Mage::helper('boltpay/dataDog')->logWarning($msg);
                 return;
             }
-
-            //Mage::log('Initiating webhook call', null, 'bolt.log');
 
             $bodyParams = json_decode(file_get_contents('php://input'), true);
 
@@ -88,7 +88,6 @@ class Bolt_Boltpay_ApiController extends Mage_Core_Controller_Front_Action
             }
 
             if (!$order->isObjectNew()) {
-                //Mage::log('Order Found. Updating it', null, 'bolt.log');
                 $orderPayment = $order->getPayment();
 
                 $newTransactionStatus = Bolt_Boltpay_Model_Payment::translateHookTypeToTransactionStatus($hookType, $transaction);
@@ -112,11 +111,9 @@ class Bolt_Boltpay_ApiController extends Mage_Core_Controller_Front_Action
                     $orderPayment->setAdditionalInformation('bolt_merchant_transaction_id', $transactionId);
                     $orderPayment->save();
                 } elseif ($merchantTransactionId != $transactionId && $hookType != 'credit') {
-                    Mage::helper('boltpay/bugsnag')->notifyException(
-                        new Exception(
-                            $boltHelperBase->__("Transaction id mismatch. Expected: %s got: %s", $merchantTransactionId, $transactionId)
-                        )
-                    );
+                    $msg = $boltHelperBase->__("Transaction id mismatch. Expected: %s got: %s", $merchantTransactionId, $transactionId);
+                    Mage::helper('boltpay/bugsnag')->notifyException(new Exception($msg));
+                    Mage::helper('boltpay/dataDog')->logWarning($msg);
                 }
 
                 $orderPayment->setData('auto_capture', $newTransactionStatus == 'completed');
@@ -143,6 +140,8 @@ class Bolt_Boltpay_ApiController extends Mage_Core_Controller_Front_Action
                 );
                 $this->getResponse()->setHttpResponseCode(200);
 
+                Mage::helper('boltpay/dataDog')->logInfo("Updated order #{$order->getIncrementId()}", array('order' => var_export($order->debug(), true)));
+
                 return;
             }
 
@@ -158,12 +157,12 @@ class Bolt_Boltpay_ApiController extends Mage_Core_Controller_Front_Action
             );
 
             if (empty($reference) || empty($transactionId)) {
-                $exception = new Exception($boltHelperBase->__('Reference and/or transaction_id is missing'));
-
+                $msg = $boltHelperBase->__('Reference and/or transaction_id is missing');
                 $this->getResponse()->setHttpResponseCode(400)
-                    ->setBody(json_encode(array('status' => 'failure', 'error' => array('code' => 6011, 'message' => $exception->getMessage()))));
+                    ->setBody(json_encode(array('status' => 'failure', 'error' => array('code' => 6011, 'message' => $msg))));
 
-                Mage::helper('boltpay/bugsnag')->notifyException($exception);
+                Mage::helper('boltpay/dataDog')->logWarning($msg);
+                Mage::helper('boltpay/bugsnag')->notifyException(new Exception($msg));
                 return;
             }
 
@@ -183,6 +182,8 @@ class Bolt_Boltpay_ApiController extends Mage_Core_Controller_Front_Action
                 ->setHttpResponseCode(201)
                 ->sendResponse();
 
+            Mage::helper('boltpay/dataDog')->logInfo("Created order #{$order->getIncrementId()}", array('order' => var_export($order->debug(), true)));
+
             //////////////////////////////////////////////
             //  Clear parent quote to empty the cart
             //////////////////////////////////////////////
@@ -192,6 +193,7 @@ class Bolt_Boltpay_ApiController extends Mage_Core_Controller_Front_Action
             //////////////////////////////////////////////
 
         } catch (Bolt_Boltpay_InvalidTransitionException $boltPayInvalidTransitionException) {
+            Mage::helper('boltpay/dataDog')->logError($boltPayInvalidTransitionException);
 
             if ($boltPayInvalidTransitionException->getOldStatus() == Bolt_Boltpay_Model_Payment::TRANSACTION_ON_HOLD) {
                 $this->getResponse()->setHttpResponseCode(503)
@@ -227,17 +229,19 @@ class Bolt_Boltpay_ApiController extends Mage_Core_Controller_Front_Action
                 }
             }
         } catch (Exception $e) {
+            $metaData = array();
+            if (isset($quote)){
+                $metaData['quote'] = var_export($quote->debug(), true);
+            }
+
+            Mage::helper('boltpay/dataDog')->logError($e, $metaData);
+
             if(stripos($e->getMessage(), 'Not all products are available in the requested quantity') !== false) {
                 $this->getResponse()->setHttpResponseCode(409)
                     ->setBody(json_encode(array('status' => 'failure', 'error' => array('code' => 6003, 'message' => $e->getMessage()))));
             }else{
                 $this->getResponse()->setHttpResponseCode(422)
                     ->setBody(json_encode(array('status' => 'failure', 'error' => array('code' => 6009, 'message' => $e->getMessage()))));
-
-                $metaData = array();
-                if (isset($quote)){
-                    $metaData['quote'] = var_export($quote->debug(), true);
-                }
 
                 Mage::helper('boltpay/bugsnag')->notifyException($e, $metaData);
             }

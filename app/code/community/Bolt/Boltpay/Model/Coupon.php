@@ -72,7 +72,9 @@ class Bolt_Boltpay_Model_Coupon extends Mage_Core_Model_Abstract
         try {
 
             if (!$this->requestObject){
-                throw new \Bolt_Boltpay_BadInputException('Need to set setup variables in order to apply coupon');
+                $msg = 'Need to set setup variables in order to apply coupon';
+                Mage::helper('boltpay/dataDog')->logWarning($msg);
+                throw new \Bolt_Boltpay_BadInputException($msg);
             }
 
             $this->validateCoupon();
@@ -84,6 +86,7 @@ class Bolt_Boltpay_Model_Coupon extends Mage_Core_Model_Abstract
             return false;
         } catch (\Exception $e) {
             Mage::helper('boltpay/bugsnag')->notifyException($e);
+            Mage::helper('boltpay/dataDog')->logError($e);
             return false;
         }
         return true;
@@ -449,9 +452,10 @@ class Bolt_Boltpay_Model_Coupon extends Mage_Core_Model_Abstract
         $this->responseCart = $this->getCartTotals();
 
         if ($exception){
+            Mage::helper('boltpay/dataDog')->logError($exception);
             throw $exception;
         }
-
+        Mage::helper('boltpay/dataDog')->logWarning($message);
         throw new \Bolt_Boltpay_BadInputException($message);
     }
 

@@ -59,6 +59,7 @@ class Bolt_Boltpay_Model_Order_Detail extends Mage_Core_Model_Abstract
             $this->initWithPayment($orderPayment);
         } catch (Exception $e) {
             if (!$this->initByReference($reference)) {
+                Mage::helper('boltpay/dataDog')->logError($e);
                 throw $e;
             }
         }
@@ -78,13 +79,17 @@ class Bolt_Boltpay_Model_Order_Detail extends Mage_Core_Model_Abstract
     public function initWithPayment(Mage_Sales_Model_Order_Payment $orderPayment)
     {
         if (!$orderPayment->getId()) {
-            Mage::throwException(Mage::helper('boltpay')->__("No payment found"));
+            $msg= Mage::helper('boltpay')->__("No payment found");
+            Mage::helper('boltpay/dataDog')->logWarning($msg);
+            Mage::throwException($msg);
         }
 
         $order = Mage::getModel('sales/order')->load($orderPayment->getParentId());
 
         if (!$order->getId()) {
-            Mage::throwException(Mage::helper('boltpay')->__("No order found with ID of {$orderPayment->getParentId()}"));
+            $msg= Mage::helper('boltpay')->__("No order found with ID of {$orderPayment->getParentId()}");
+            Mage::helper('boltpay/dataDog')->logWarning($msg);
+            Mage::throwException($msg);
         }
 
         $this->order = $order;
@@ -151,12 +156,16 @@ class Bolt_Boltpay_Model_Order_Detail extends Mage_Core_Model_Abstract
     protected function validateOrderDetail()
     {
         if (!$this->order->getId()) {
-            Mage::throwException(Mage::helper('boltpay')->__("No order found"));
+            $msg= Mage::helper('boltpay')->__("No order found");
+            Mage::helper('boltpay/dataDog')->logWarning($msg);
+            Mage::throwException($msg);
 
         }
 
         if ($this->order->getPayment()->getMethod() != 'boltpay') {
-            Mage::throwException(Mage::helper('boltpay')->__("Payment method is not 'boltpay'"));
+            $msg= Mage::helper('boltpay')->__("Payment method is not 'boltpay'");
+            Mage::helper('boltpay/dataDog')->logWarning($msg);
+            Mage::throwException($msg);
         }
 
         return true;

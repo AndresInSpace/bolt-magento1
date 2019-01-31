@@ -51,6 +51,7 @@ class Bolt_Boltpay_Model_OrderFixer extends Mage_Core_Model_Abstract
             $this->updateOrderTotals();
             $this->notifyAndSaveOrder();
         } catch (\Bolt_Boltpay_BadInputException $e) {
+            Mage::helper('boltpay/dataDog')->logError($e);
             Mage::helper('boltpay/bugsnag')->notifyException($e);
             throw $e;
         }
@@ -77,6 +78,7 @@ class Bolt_Boltpay_Model_OrderFixer extends Mage_Core_Model_Abstract
 
             return true;
         } catch (\Bolt_Boltpay_BadInputException $e) {
+            Mage::helper('boltpay/dataDog')->logError($e);
             Mage::helper('boltpay/bugsnag')->notifyException($e);
             return false;
         }
@@ -186,17 +188,15 @@ class Bolt_Boltpay_Model_OrderFixer extends Mage_Core_Model_Abstract
      */
     protected function bugsnagTheItemChange(Mage_Sales_Model_Order_Item $magentoItem, $boltItem)
     {
-        Mage::helper('boltpay/bugsnag')->notifyException(
-            new Exception(
-                Mage::helper('boltpay')->__(
-                    "The order item %s price of order #%s has been updated from %s to %s.",
-                    $magentoItem->getSku(),
-                    $this->magentoOrder->getIncrementId(),
-                    $magentoItem->getPrice(),
-                    $this->getBoltItemPrice($boltItem)
-                )
-            )
-        );
+    $msg =  Mage::helper('boltpay')->__(
+                "The order item %s price of order #%s has been updated from %s to %s.",
+                $magentoItem->getSku(),
+                $this->magentoOrder->getIncrementId(),
+                $magentoItem->getPrice(),
+                $this->getBoltItemPrice($boltItem)
+            );
+        Mage::helper('boltpay/dataDog')->logInfo($msg);
+        Mage::helper('boltpay/bugsnag')->notifyException(new Exception($msg));
     }
 
     /**

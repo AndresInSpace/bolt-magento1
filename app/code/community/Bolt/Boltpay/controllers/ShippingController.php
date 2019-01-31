@@ -62,7 +62,7 @@ class Bolt_Boltpay_ShippingController extends Mage_Core_Controller_Front_Action
     public function indexAction()
     {
         try {
-          
+
             set_time_limit(30);
             ignore_user_abort(true);
 
@@ -71,7 +71,9 @@ class Bolt_Boltpay_ShippingController extends Mage_Core_Controller_Front_Action
             $requestData = json_decode($this->_requestJSON);
 
             if (!$this->_boltApiHelper->verify_hook($this->_requestJSON, $hmacHeader)) {
-                throw new Exception(Mage::helper('boltpay')->__("Failed HMAC Authentication"));
+                $msg = Mage::helper('boltpay')->__("Failed HMAC Authentication");
+                Mage::helper('boltpay/dataDog')->logWarning($msg);
+                throw new Exception($msg);
             }
 
             $shippingAddress = $requestData->shipping_address;
@@ -80,7 +82,9 @@ class Bolt_Boltpay_ShippingController extends Mage_Core_Controller_Front_Action
                 !$this->_shippingAndTaxModel->isPOBoxAllowed()
                 && $this->_shippingAndTaxModel->doesAddressContainPOBox($shippingAddress->street_address1, $shippingAddress->street_address2)
             ) {
-                $errorDetails = array('code' => 6101, 'message' => Mage::helper('boltpay')->__('Address with P.O. Box is not allowed.'));
+                $msg = Mage::helper('boltpay')->__('Address with P.O. Box is not allowed.');
+                $errorDetails = array('code' => 6101, 'message' => $msg);
+                Mage::helper('boltpay/dataDog')->logWarning($msg);
                 return $this->getResponse()->setHttpResponseCode(403)
                     ->setBody(json_encode(array('status' => 'failure','error' => $errorDetails)));
             }
@@ -125,7 +129,7 @@ class Bolt_Boltpay_ShippingController extends Mage_Core_Controller_Front_Action
 
             $responseJSON = json_encode($estimate, JSON_PRETTY_PRINT);
 
-            //Mage::log('SHIPPING AND TAX RESPONSE: ' . $response, null, 'shipping_and_tax.log');
+            Mage::helper('boltpay/dataDog')->logInfo('Shipping and tax response: ' . var_export($responseJSON, true));
 
             $this->getResponse()->clearHeaders()
                 ->setHeader('Content-type', 'application/json', true)
@@ -143,6 +147,7 @@ class Bolt_Boltpay_ShippingController extends Mage_Core_Controller_Front_Action
             }
 
             Mage::helper('boltpay/bugsnag')->notifyException($e, $metaData);
+            Mage::helper('boltpay/dataDog')->logError($e, $metaData);
             throw $e;
         }
     }

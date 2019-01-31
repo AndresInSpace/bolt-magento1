@@ -212,6 +212,7 @@ class Bolt_Boltpay_Helper_Data extends Mage_Core_Helper_Abstract
             $clonedQuote->merge($sourceQuote);
         } catch (Exception $e) {
             Mage::helper('boltpay/bugsnag')->notifyException($e);
+            Mage::helper('boltpay/dataDog')->logError($e);
         }
 
         if ($checkoutType != Bolt_Boltpay_Block_Checkout_Boltpay::CHECKOUT_TYPE_MULTI_PAGE ) {

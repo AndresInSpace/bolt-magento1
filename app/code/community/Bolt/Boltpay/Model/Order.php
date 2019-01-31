@@ -48,7 +48,9 @@ class Bolt_Boltpay_Model_Order extends Mage_Core_Model_Abstract
 
         try {
             if (empty($reference)) {
-                throw new Exception(Mage::helper('boltpay')->__("Bolt transaction reference is missing in the Magento order creation process."));
+                $msg = Mage::helper('boltpay')->__("Bolt transaction reference is missing in the Magento order creation process.");
+                Mage::helper('boltpay/dataDog')->logWarning($msg);
+                throw new Exception($msg);
             }
 
             $transaction = $transaction ?: Mage::helper('boltpay/api')->fetchTransaction($reference);
@@ -60,33 +62,34 @@ class Bolt_Boltpay_Model_Order extends Mage_Core_Model_Abstract
 
             // check that the order is in the system.  If not, we have an unexpected problem
             if ($immutableQuote->isEmpty()) {
-                throw new Exception(Mage::helper('boltpay')->__("The expected immutable quote [$immutableQuoteId] is missing from the Magento system.  Were old quotes recently removed from the database?"));
+                $msg = Mage::helper('boltpay')->__("The expected immutable quote [$immutableQuoteId] is missing from the Magento system.  Were old quotes recently removed from the database?");
+                Mage::helper('boltpay/dataDog')->logWarning($msg);
+                throw new Exception($msg);
             }
 
             if(!$this->allowOutOfStockOrders() && !empty($this->getOutOfStockSKUs($immutableQuote))){
-                throw new Exception(Mage::helper('boltpay')->__("Not all items are available in the requested quantities. Out of stock SKUs: %s", join(', ', $this->getOutOfStockSKUs($immutableQuote))));
+                $msg = Mage::helper('boltpay')->__("Not all items are available in the requested quantities. Out of stock SKUs: %s", join(', ', $this->getOutOfStockSKUs($immutableQuote)));
+                Mage::helper('boltpay/dataDog')->logWarning($msg);
+                throw new Exception($msg);
             }
 
             // check if the quotes matches, frontend only
             if ( $sessionQuoteId && ($sessionQuoteId != $immutableQuote->getParentQuoteId()) ) {
-                throw new Exception(
-                    Mage::helper('boltpay')->__("The Bolt order reference does not match the current cart ID. Cart ID: [%s]  Bolt Reference: [%s]",
-                        $sessionQuoteId , $immutableQuote->getParentQuoteId())
-                );
+                $msg= Mage::helper('boltpay')->__("The Bolt order reference does not match the current cart ID. Cart ID: [%s]  Bolt Reference: [%s]", $sessionQuoteId , $immutableQuote->getParentQuoteId());
+                Mage::helper('boltpay/dataDog')->logWarning($msg);
+                throw new Exception($msg);
             }
 
             // check if this order is currently being proccessed.  If so, throw exception
             $parentQuote = $this->getQuoteById($immutableQuote->getParentQuoteId());
             if ($parentQuote->isEmpty()) {
-                throw new Exception(
-                    Mage::helper('boltpay')->__("The parent quote %s is unexpectedly missing.",
-                        $immutableQuote->getParentQuoteId() )
-                );
+                $msg= Mage::helper('boltpay')->__("The parent quote %s is unexpectedly missing.", $immutableQuote->getParentQuoteId());
+                Mage::helper('boltpay/dataDog')->logWarning($msg);
+                throw new Exception($msg);
             } else if (!$parentQuote->getIsActive() && $transaction->indemnification_reason !== self::MERCHANT_BACK_OFFICE) {
-                throw new Exception(
-                    Mage::helper('boltpay')->__("The parent quote %s for immutable quote %s is currently being processed or has been processed for order #%s. Check quote %s for details.",
-                        $parentQuote->getId(), $immutableQuote->getId(), $parentQuote->getReservedOrderId(), $parentQuote->getParentQuoteId() )
-                );
+                $msg = Mage::helper('boltpay')->__("The parent quote %s for immutable quote %s is currently being processed or has been processed for order #%s. Check quote %s for details.", $parentQuote->getId(), $immutableQuote->getId(), $parentQuote->getReservedOrderId(), $parentQuote->getParentQuoteId());
+                Mage::helper('boltpay/dataDog')->logWarning($msg);
+                throw new Exception($msg);
             } else {
                 $parentQuote->setIsActive(false)->save();
             }
@@ -173,6 +176,7 @@ class Bolt_Boltpay_Model_Order extends Mage_Core_Model_Abstract
                         'shipping_address' => var_export($shippingAddress->debug(), true),
                         'quote' => var_export($immutableQuote->debug(), true)
                     );
+                    Mage::helper('boltpay/dataDog')->logWarning($errorMessage);
                     Mage::helper('boltpay/bugsnag')->notifyException(new Exception($errorMessage), $metaData);
                 }
             }
@@ -201,11 +205,12 @@ class Bolt_Boltpay_Model_Order extends Mage_Core_Model_Abstract
                 ############################
                 $preExistingTransactionReference = $preExistingOrder->getPayment()->getAdditionalInformation('bolt_reference');
                 if ( $preExistingTransactionReference === $reference ) {
+                    $msg =  Mage::helper('boltpay')->__("The order #%s has already been processed for this quote.", $preExistingOrder->getIncrementId());
+                    Mage::helper('boltpay/dataDog')->logWarning($msg);
                     Mage::helper('boltpay/bugsnag')->notifyException(
-                        new Exception( Mage::helper('boltpay')->__("The order #%s has already been processed for this quote.", $preExistingOrder->getIncrementId() ) ),
-                        array(),
-                        'warning'
+                        new Exception($msg), array(), 'warning'
                     );
+
                     return $preExistingOrder;
                 }
                 ############################

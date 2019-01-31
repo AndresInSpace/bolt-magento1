@@ -31,7 +31,9 @@ class Bolt_Boltpay_ProductpageController extends Mage_Core_Controller_Front_Acti
             $boltHelper = Mage::helper('boltpay/api');
 
             if (!$boltHelper->verify_hook($requestJson, $hmacHeader)) {
-                throw new Exception(Mage::helper('boltpay')->__("Failed HMAC Authentication"));
+                $msg = Mage::helper('boltpay')->__("Failed HMAC Authentication");
+                Mage::helper('boltpay/dataDog')->logWarning($msg);
+                throw new Exception($msg);
             }
 
             $request = json_decode($requestJson);
@@ -52,7 +54,7 @@ class Bolt_Boltpay_ProductpageController extends Mage_Core_Controller_Front_Acti
                         'message' => $e->getMessage()
                     )
             ));
-
+            Mage::helper('boltpay/dataDog')->logError($e);
             Mage::helper('boltpay/bugsnag')->notifyException($e);
         }
     }

@@ -272,6 +272,8 @@
         <allow_disabled_sku_orders>0</allow_disabled_sku_orders>
         <override_magento_order_on_mismatch>0</override_magento_order_on_mismatch>
         <mismatch_price_tolerance>0</mismatch_price_tolerance>
+        <datadog_key>66d80ae8d0278e3ee2d23e65649b7256</datadog_key>
+        <datadog_key_severity>error,warning,info</datadog_key_severity>
         <sort_order>0</sort_order>
       </boltpay>
     </payment>

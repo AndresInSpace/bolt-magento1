@@ -58,7 +58,7 @@ class Bolt_Boltpay_Model_Productpage_Cart extends Mage_Core_Model_Abstract
             return false;
         } catch (\Exception $e) {
             Mage::helper('boltpay/bugsnag')->notifyException($e);
-
+            Mage::helper('boltpay/dataDog')->logError($e);
             return false;
         }
 
@@ -348,9 +348,10 @@ class Bolt_Boltpay_Model_Productpage_Cart extends Mage_Core_Model_Abstract
         $this->cartResponse = $this->getCartTotals();
 
         if ($exception) {
+            Mage::helper('boltpay/dataDog')->logError($exception);
             throw $exception;
         }
-
+        Mage::helper('boltpay/dataDog')->logWarning($message);
         throw new \Bolt_Boltpay_BadInputException($message);
     }
 

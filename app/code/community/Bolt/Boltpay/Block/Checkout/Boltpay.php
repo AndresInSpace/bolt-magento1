@@ -235,6 +235,7 @@ PROMISE;
                 }
             } catch (Exception $e) {
                 $metaData = array('quote' => var_export($sessionQuote->debug(), true));
+                Mage::helper('boltpay/dataDog')->logError($e,$metaData);
                 Mage::helper('boltpay/bugsnag')->notifyException(
                     new Exception($e),
                     $metaData
@@ -251,6 +252,7 @@ PROMISE;
             return $this->buildBoltCheckoutJavascript($checkoutType, $immutableQuote, $hintData, $cartData);
 
         } catch (Exception $e) {
+            Mage::helper('boltpay/dataDog')->logError($e);
             Mage::helper('boltpay/bugsnag')->notifyException($e);
         }
     }
