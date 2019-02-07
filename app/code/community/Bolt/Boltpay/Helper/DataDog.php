@@ -15,25 +15,29 @@
  * @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
  */
 
-require_once(Mage::getBaseDir('lib') . DS .  'Boltpay/DataDog/Autoload.php');
+require_once(Mage::getBaseDir('lib') . DS . 'Boltpay/DataDog/Autoload.php');
 
 class Bolt_Boltpay_Helper_DataDog extends Mage_Core_Helper_Abstract
 {
-
     private $_apiKey;
     private $_severityConfig;
     private $_data = array();
     private $_datadog;
 
-    public function __construct(){
+    /**
+     * Bolt_Boltpay_Helper_DataDog constructor.
+     */
+    public function __construct()
+    {
         $this->_apiKey = $this->getApiKeyConfig();
-        $this->_severityConfig=$this->getSeverityConfig();
-        $this->_data['platform-version'] = 'Magento '.Mage::getVersion();
+        $this->_severityConfig = $this->getSeverityConfig();
+        $this->_data['platform-version'] = 'Magento ' . Mage::getVersion();
         $this->_data['bolt-plugin-version'] = static::getBoltPluginVersion();
     }
 
     /**
-     * Function get DataDog
+     * Get DataDog
+     *
      * @return DataDog_Client
      */
     private function getDataDog()
@@ -52,8 +56,8 @@ class Bolt_Boltpay_Helper_DataDog extends Mage_Core_Helper_Abstract
                     ? DataDog_Environment::DEVELOPMENT_ENVIRONMENT
                     : DataDog_Environment::PRODUCTION_ENVIRONMENT;
             }
-            $datadog->setData('store_url',@Mage::getBaseUrl());
-            $datadog->setData('env',$env);
+            $datadog->setData('store_url', @Mage::getBaseUrl());
+            $datadog->setData('env', $env);
             $this->_datadog = $datadog;
         }
 
@@ -61,114 +65,81 @@ class Bolt_Boltpay_Helper_DataDog extends Mage_Core_Helper_Abstract
     }
 
     /**
+     * Log
      *
-     * @param        $data
+     * @param $data
      * @param string $type
-     *
-     * @param array  $additionalData
-     *
+     * @param array $additionalData
      * @return $this
      */
     public function log($data, $type = DataDog_ErrorTypes::TYPE_INFO, $additionalData = array())
     {
-        if ($this->_apiKey && !in_array($type, $this->_severityConfig)){
-            return $this;
+        if ($this->_apiKey && !in_array($type, $this->_severityConfig)) {
+            return $this->getDataDog()->setLastResponseStatus(false);
         }
 
-        $this->getDataDog()->log($data,$type,$additionalData);
-        return $this;
+        return $this->getDataDog()->log($data, $type, $additionalData);
     }
 
     /**
      * Log information
      *
      * @param $message
-     *
      * @param array $additionalData
      * @return $this
      */
     public function logInfo($message, $additionalData = array())
     {
-        if ($this->_apiKey && !in_array(DataDog_ErrorTypes::TYPE_INFO, $this->_severityConfig)){
-            return $this;
+        if ($this->_apiKey && !in_array(DataDog_ErrorTypes::TYPE_INFO, $this->_severityConfig)) {
+            return $this->getDataDog()->setLastResponseStatus(false);
         }
-        $this->getDataDog()->logInfo($message,$additionalData);
-        return $this;
+
+        return $this->getDataDog()->logInfo($message, $additionalData);
     }
 
     /**
      * Log warning
      *
      * @param $message
-     *
      * @param array $additionalData
      * @return $this
      */
     public function logWarning($message, $additionalData = array())
     {
-        if ($this->_apiKey && !in_array(DataDog_ErrorTypes::TYPE_WARNING, $this->_severityConfig)){
-            return $this;
+        if ($this->_apiKey && !in_array(DataDog_ErrorTypes::TYPE_WARNING, $this->_severityConfig)) {
+            return $this->getDataDog()->setLastResponseStatus(false);
         }
 
-        $this->getDataDog()->logWarning($message,$additionalData);
-        return $this;
-
+        return $this->getDataDog()->logWarning($message, $additionalData);
     }
 
     /**
      * Log exception
      *
-     * @param    Exception $e
-     *
+     * @param Exception $e
      * @param array $additionalData
      * @return $this
      */
     public function logError(Exception $e, $additionalData = array())
     {
-        if ($this->_apiKey && !in_array(DataDog_ErrorTypes::TYPE_ERROR, $this->_severityConfig)){
-            return $this;
+        if ($this->_apiKey && !in_array(DataDog_ErrorTypes::TYPE_ERROR, $this->_severityConfig)) {
+            return $this->getDataDog()->setLastResponseStatus(false);
         }
 
-        $this->getDataDog()->logError($e,$additionalData);
-        return $this;
+        return $this->getDataDog()->logError($e, $additionalData);
     }
-
 
     /**
      * Set log information
      *
-     * @param string $attribute
-     * @param mixed  $value
-     *
+     * @param $attribute
+     * @param $value
      * @return $this
      */
     public function setData($attribute, $value)
     {
         $this->_data[$attribute] = $value;
-        return $this;
-    }
 
-    /**
-     * Set Environment
-     * @param $env
-     * @return $this
-     */
-    public function setEnv($env)
-    {
-        $this->_data['env'] = $env;
-        return $this;
-    }
-
-    /**
-     * Set log service information
-     *
-     * @param $service
-     *
-     * @return $this
-     */
-    public function setService($service)
-    {
-        $this->_data['service'] = $service;
         return $this;
     }
 
@@ -176,8 +147,7 @@ class Bolt_Boltpay_Helper_DataDog extends Mage_Core_Helper_Abstract
      * Get log information
      *
      * @param $attribute
-     *
-     * @return mixed
+     * @return mixed|string
      */
     public function getData($attribute)
     {
@@ -186,34 +156,39 @@ class Bolt_Boltpay_Helper_DataDog extends Mage_Core_Helper_Abstract
 
     /**
      * Get Api key configuration
-     * @return string
+     *
+     * @return mixed
      */
-    public function getApiKeyConfig(){
+    public function getApiKeyConfig()
+    {
         return Mage::getStoreConfig('payment/boltpay/datadog_key');
     }
 
     /**
      * Get severity configuration
+     *
      * @return array
      */
-    public function getSeverityConfig(){
+    public function getSeverityConfig()
+    {
         $severityString = Mage::getStoreConfig('payment/boltpay/datadog_key_severity');
-        $severities = explode(',',$severityString);
+        $severities = explode(',', $severityString);
+
         return $severities;
     }
 
     /**
      * Get Bolt Plugin Version
-     * @return string|null
+     *
+     * @return null|string
      */
-     protected static function getBoltPluginVersion() {
-        $versionElm =  Mage::getConfig()->getModuleConfig("Bolt_Boltpay")->xpath("version");
-
-        if(isset($versionElm[0])) {
+    protected static function getBoltPluginVersion()
+    {
+        $versionElm = Mage::getConfig()->getModuleConfig('Bolt_Boltpay')->xpath('version');
+        if (isset($versionElm[0])) {
             return (string)$versionElm[0];
         }
 
         return null;
     }
-
 }

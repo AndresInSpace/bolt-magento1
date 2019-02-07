@@ -21,26 +21,29 @@ class DataDog_Client
     private $_apiKey;
     private $_data = array();
 
-
+    /**
+     * DataDog_Client constructor.
+     *
+     * @param $apiKey
+     * @param $platformVersion
+     * @param $boltVersion
+     */
     public function __construct($apiKey, $platformVersion, $boltVersion)
     {
         $this->_apiKey = $apiKey;
         $this->_data['platform-version'] = $platformVersion;
         $this->_data['bolt-plugin-version'] = $boltVersion;
+        $this->_data['last_response_status'] = null;
     }
 
     /**
-     *
-     * @param        $message
+     * @param $message
      * @param string $type
-     *
      * @param array $additionalData
-     *
      * @return $this
      */
     public function log($message, $type = DataDog_ErrorTypes::TYPE_INFO, $additionalData = array())
     {
-
         if (DataDog_Request::isRequest()) {
             $data = DataDog_Request::getRequestMetaData();
         }
@@ -63,13 +66,13 @@ class DataDog_Client
      * Log information
      *
      * @param $message
-     *
      * @param array $additionalData
      * @return $this
      */
     public function logInfo($message, $additionalData = array())
     {
         $this->log($message, DataDog_ErrorTypes::TYPE_INFO, $additionalData);
+
         return $this;
     }
 
@@ -77,21 +80,20 @@ class DataDog_Client
      * Log warning
      *
      * @param $message
-     *
      * @param array $additionalData
      * @return $this
      */
     public function logWarning($message, $additionalData = array())
     {
         $this->log($message, DataDog_ErrorTypes::TYPE_WARNING, $additionalData);
+
         return $this;
     }
 
     /**
      * Log exception
      *
-     * @param    Exception $e
-     *
+     * @param Exception $e
      * @param array $additionalData
      * @return $this
      */
@@ -105,15 +107,14 @@ class DataDog_Client
             $additionalData
         );
         $this->log($e->getMessage(), DataDog_ErrorTypes::TYPE_ERROR, $additionalData);
+
         return $this;
     }
 
     /**
      * Post the given info to DataDog using cURL.
      *
-     * @param string $body the request body
-     *
-     * @return void
+     * @param $body
      */
     public function postWithCurl($body)
     {
@@ -129,24 +130,51 @@ class DataDog_Client
         $statusCode = curl_getinfo($http, CURLINFO_HTTP_CODE);
         if ($statusCode > 200) {
             error_log('DataDog Warning: Couldn\'t notify (' . $responseBody . ')');
-        }
-        if (curl_errno($http)) {
+            $this->setLastResponseStatus(false);
+        }elseif (curl_errno($http)) {
             error_log('DataDog Warning: Couldn\'t notify (' . curl_error($http) . ')');
+            $this->setLastResponseStatus(false);
+        }else{
+            $this->setLastResponseStatus(true);
         }
+
         curl_close($http);
+    }
+
+    /**
+     * Set last response status
+     *
+     * @param $responseStatus
+     * @return DataDog_Client
+     */
+    public function setLastResponseStatus($responseStatus)
+    {
+        $this->setData('last_response_status', $responseStatus);
+
+        return $this;
+    }
+
+    /**
+     * Get last response status
+     *
+     * @return mixed|string
+     */
+    public function getLastResponseStatus()
+    {
+        return $this->getData('last_response_status');
     }
 
     /**
      * Set log information
      *
-     * @param string $attribute
-     * @param mixed $value
-     *
+     * @param $attribute
+     * @param $value
      * @return $this
      */
     public function setData($attribute, $value)
     {
         $this->_data[$attribute] = $value;
+
         return $this;
     }
 
@@ -154,8 +182,7 @@ class DataDog_Client
      * Get log information
      *
      * @param $attribute
-     *
-     * @return mixed
+     * @return mixed|string
      */
     public function getData($attribute)
     {
